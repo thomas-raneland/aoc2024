@@ -21,8 +21,10 @@ public class Day07 {
     }
 
     private static void partI() {
+        List<Operator> operators = List.of(Operator.ADD, Operator.MUL);
+
         long total = parse()
-                .filter(eq -> combinations(eq.operatorsNeeded(), Operator.ADD, Operator.MUL).anyMatch(eq::isTrue))
+                .filter(eq -> AocUtils.product(operators, eq.operatorsNeeded()).stream().anyMatch(eq::isTrue))
                 .mapToLong(Equation::result)
                 .sum();
 
@@ -30,8 +32,10 @@ public class Day07 {
     }
 
     private static void partII() {
+        List<Operator> operators = List.of(Operator.ADD, Operator.MUL, Operator.CONCAT);
+
         long total = parse()
-                .filter(eq -> combinations(eq.operatorsNeeded(), Operator.values()).anyMatch(eq::isTrue))
+                .filter(eq -> AocUtils.product(operators, eq.operatorsNeeded()).stream().anyMatch(eq::isTrue))
                 .mapToLong(Equation::result)
                 .sum();
 

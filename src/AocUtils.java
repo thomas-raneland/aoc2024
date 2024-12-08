@@ -1,6 +1,8 @@
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.PriorityQueue;
@@ -52,6 +54,24 @@ class AocUtils {
         Set<T> d = new HashSet<>(a);
         d.removeAll(b);
         return d;
+    }
+
+    public static <T> List<List<T>> product(List<T> values, int length) {
+        List<List<T>> combinations = new ArrayList<>();
+        collectPermutations(values, length, new ArrayList<>(), combinations);
+        return combinations;
+    }
+
+    private static <T> void collectPermutations(List<T> values, int length, List<T> prefix, List<List<T>> combinations) {
+        if (prefix.size() == length) {
+            combinations.add(List.copyOf(prefix));
+        } else {
+            for (T value : values) {
+                prefix.addLast(value);
+                collectPermutations(values, length, prefix, combinations);
+                prefix.removeLast();
+            }
+        }
     }
 
     static class Graph<T> {
