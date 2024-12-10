@@ -1,3 +1,10 @@
+import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -151,5 +158,49 @@ class AocUtils {
         }
 
         private record NodeDistance<T>(T node, long distance) {}
+    }
+
+    static String download(int day) {
+        if (day < 1 || day > 25) {
+            throw new IllegalArgumentException("Day must be 1-25");
+        }
+
+        try (HttpClient client = HttpClient.newHttpClient()) {
+            Path path = Path.of("input/" + day + ".txt");
+
+            if (!Files.exists(path)) {
+                String cookies = Files.readString(Path.of("cookies.txt")).replace("\r", "").replace("\n", "");
+                String content = client.send(HttpRequest.newBuilder()
+                                                        .uri(URI.create("https://adventofcode.com/2024/day/" + day + "/input"))
+                                                        .setHeader("Cookie", cookies)
+                                                        .build(), HttpResponse.BodyHandlers.ofString())
+                                       .body();
+                Files.writeString(path, content);
+            }
+
+            return Files.readString(path);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    static void waitForStartTime(int day) {
+        if (day < 1 || day > 25) {
+            throw new IllegalArgumentException("Day must be 1-25");
+        }
+
+        Instant start = Instant.parse("2024-12-XXT05:00:01Z".replace("XX", String.format("%02d", day)));
+
+        while (Instant.now().isBefore(start)) {
+            System.out.print(".");
+
+            try {
+                Thread.sleep(1000);
+            } catch (InterruptedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+
+        System.out.println();
     }
 }

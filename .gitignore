@@ -46,3 +46,7 @@ Thumbs.db
 # Environment variable files
 .env
 .env.*
+
+# Advent of Code
+/input/
+/cookies.txt
