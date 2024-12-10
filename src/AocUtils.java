@@ -195,6 +195,7 @@ class AocUtils {
             System.out.print(".");
 
             try {
+                //noinspection BusyWait
                 Thread.sleep(1000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
