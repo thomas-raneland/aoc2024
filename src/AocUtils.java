@@ -17,7 +17,7 @@ import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.LongStream;
 
-@SuppressWarnings("unused")
+@SuppressWarnings({"unused", "SameParameterValue", "UseOfSystemOutOrSystemErr"})
 class AocUtils {
     static int modulo(int a, int b) {
         int remainder = a % b;
@@ -196,7 +196,7 @@ class AocUtils {
 
             try {
                 //noinspection BusyWait
-                Thread.sleep(1000);
+                Thread.sleep(5000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
