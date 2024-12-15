@@ -1,7 +1,19 @@
+import java.awt.Color;
+import java.awt.Dimension;
+import java.awt.Graphics;
+import java.awt.Graphics2D;
+import java.awt.Shape;
+import java.awt.geom.GeneralPath;
+import java.awt.geom.Rectangle2D;
+import java.awt.geom.RoundRectangle2D;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.JComponent;
+import javax.swing.JFrame;
 
 public class Day15 {
     @SuppressWarnings("TrailingWhitespacesInTextBlock")
@@ -38,6 +50,8 @@ public class Day15 {
             partII(input);
             System.out.println();
         }
+
+        Visualization.create(parse(realInput).widen()).animate();
     }
 
     private static void partI(String input) {
@@ -47,13 +61,7 @@ public class Day15 {
         Pos robot = parsed.robot();
 
         for (Direction direction : moves) {
-            Map<Pos, Item> toMove = new HashMap<>();
-
-            if (canMove(map, robot, direction, toMove)) {
-                toMove.forEach(parsed.map::remove);
-                toMove.forEach((key, value) -> parsed.map.put(key.neighbor(direction), value));
-                robot = robot.neighbor(direction);
-            }
+            robot = move(direction, map, robot);
         }
 
         long res = map.keySet().stream().filter(pos -> map.get(pos) == Item.BOX).mapToLong(Pos::gps).sum();
@@ -67,13 +75,7 @@ public class Day15 {
         Pos robot = parsed.robot();
 
         for (Direction direction : moves) {
-            Map<Pos, Item> toMove = new HashMap<>();
-
-            if (canMove(map, robot, direction, toMove)) {
-                toMove.forEach(parsed.map::remove);
-                toMove.forEach((key, value) -> parsed.map.put(key.neighbor(direction), value));
-                robot = robot.neighbor(direction);
-            }
+            robot = move(direction, map, robot);
         }
 
         long res = map.keySet().stream().filter(pos -> map.get(pos) == Item.LARGE_BOX_LEFT).mapToLong(Pos::gps).sum();
@@ -113,6 +115,25 @@ public class Day15 {
         }
 
         return new Parsed(robot, map, moves);
+    }
+
+    private static Pos move(Direction direction, Map<Pos, Item> map, Pos robot) {
+        Map<Pos, Item> toMove = new HashMap<>();
+
+        if (canMove(map, robot, direction, toMove)) {
+            toMove.forEach(map::remove);
+            toMove.forEach((key, value) -> {
+                if (value != null) {
+                    map.put(key.neighbor(direction), value);
+                } else {
+                    map.remove(key.neighbor(direction));
+                }
+            });
+
+            return robot.neighbor(direction);
+        }
+
+        return robot;
     }
 
     private static boolean canMove(Map<Pos, Item> map, Pos pos, Direction direction, Map<Pos, Item> toMove) {
@@ -168,14 +189,6 @@ public class Day15 {
         }
     }
 
-    private enum Item {
-        WALL, BOX, LARGE_BOX_LEFT, LARGE_BOX_RIGHT
-    }
-
-    private enum Direction {
-        UP, DOWN, LEFT, RIGHT
-    }
-
     private record Pos(int x, int y) {
         long gps() {
             return 100L * y + x;
@@ -192,6 +205,115 @@ public class Day15 {
                 case LEFT -> new Pos(x - 1, y);
                 case RIGHT -> new Pos(x + 1, y);
             };
+        }
+    }
+
+    private enum Item {
+        EMPTY, WALL, BOX, LARGE_BOX_LEFT, LARGE_BOX_RIGHT
+    }
+
+    private enum Direction {
+        UP, DOWN, LEFT, RIGHT
+    }
+
+    ///////////////////// VISUALIZATION /////////////////////
+
+    private record Visualization(JComponent comp, AtomicReference<Pos> robot, Map<Pos, Item> map, List<Direction> moves) {
+        private static final int CELL_H = 20;
+        private static final int CELL_W = 10;
+        private static final int CELL_R = 5;
+
+        static Visualization create(Parsed parsed) {
+            AtomicReference<Pos> robot = new AtomicReference<>(parsed.robot);
+
+            var comp = new JComponent() {
+                {
+                    setPreferredSize(new Dimension(
+                            (parsed.map.keySet().stream().mapToInt(Pos::x).max().orElseThrow() + 1) * CELL_W,
+                            (parsed.map.keySet().stream().mapToInt(Pos::x).max().orElseThrow() + 1) * CELL_H));
+                }
+
+                @Override
+                protected void paintComponent(Graphics g) {
+                    super.paintComponent(g);
+
+                    g.setColor(Color.decode("#c2c2d6"));
+                    g.fillRect(0, 0, getWidth(), getHeight());
+
+                    synchronized (parsed.map) {
+                        for (Pos pos : parsed.map().keySet()) {
+                            switch (parsed.map().getOrDefault(pos, Item.EMPTY)) {
+                                case WALL -> draw(g, new Rectangle2D.Double(pos.x * CELL_W, pos.y * CELL_H, CELL_W, CELL_H),
+                                        Color.decode("#33334d"));
+                                case BOX -> draw(g, new RoundRectangle2D.Double(pos.x * CELL_W, pos.y * CELL_H, CELL_W, CELL_H, CELL_R, CELL_R),
+                                        Color.decode("#862d2d"));
+                                case LARGE_BOX_LEFT -> draw(g, leftRounded(pos.x * CELL_W, pos.y * CELL_H),
+                                        Color.decode("#862d2d"));
+                                case LARGE_BOX_RIGHT -> draw(g, rightRounded(pos.x * CELL_W, pos.y * CELL_H),
+                                        Color.decode("#732626"));
+                            }
+                        }
+                    }
+
+                    Pos rPos = robot.get();
+                    draw(g, new RoundRectangle2D.Double(rPos.x * CELL_W, rPos.y * CELL_H, CELL_W, CELL_H, CELL_R, CELL_R),
+                            Color.decode("#00cc44"));
+                }
+
+                private static void draw(Graphics g, Shape shape, Color color) {
+                    g.setColor(color);
+                    ((Graphics2D) g).fill(shape);
+                }
+
+                private static Shape leftRounded(double x, double y) {
+                    GeneralPath path = new GeneralPath();
+                    path.moveTo(x + CELL_R, y);
+                    path.lineTo(x + CELL_W, y);
+                    path.lineTo(x + CELL_W, y + CELL_H);
+                    path.lineTo(x + CELL_R, y + CELL_H);
+                    path.quadTo(x, y + CELL_H, x, y + CELL_H - CELL_R);
+                    path.lineTo(x, y + CELL_R);
+                    path.quadTo(x, y, x + CELL_R, y);
+                    path.closePath();
+                    return path;
+                }
+
+                private static Shape rightRounded(double x, double y) {
+                    GeneralPath path = new GeneralPath();
+                    path.moveTo(x, y);
+                    path.lineTo(x + CELL_W - CELL_R, y);
+                    path.quadTo(x + CELL_W, y, x + CELL_W, y + CELL_R);
+                    path.lineTo(x + CELL_W, y + CELL_H - CELL_R);
+                    path.quadTo(x + CELL_W, y + CELL_H, x + CELL_W - CELL_R, y + CELL_H);
+                    path.lineTo(x, y + CELL_H);
+                    path.closePath();
+                    return path;
+                }
+            };
+
+            JFrame frame = new JFrame("Day 15");
+            frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+            frame.add(comp);
+            frame.pack();
+            frame.setVisible(true);
+            return new Visualization(comp, robot, parsed.map, parsed.moves);
+        }
+
+        public void animate() {
+            for (Direction direction : moves) {
+                synchronized (map) {
+                    robot.set(move(direction, map, robot.get()));
+                }
+
+                comp.invalidate();
+                comp.validate();
+                comp.repaint();
+
+                try {
+                    Thread.sleep(10);
+                } catch (InterruptedException ignored) {
+                }
+            }
         }
     }
 }
