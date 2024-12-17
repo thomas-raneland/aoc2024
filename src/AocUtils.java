@@ -24,6 +24,11 @@ class AocUtils {
         return remainder < 0 ? remainder + b : remainder;
     }
 
+    static long modulo(long a, long b) {
+        long remainder = a % b;
+        return remainder < 0 ? remainder + b : remainder;
+    }
+
     static long lcm(LongStream stream) {
         return stream.reduce(1, AocUtils::lcm);
     }
