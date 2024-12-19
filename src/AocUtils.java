@@ -141,7 +141,7 @@ class AocUtils {
                 var u = queue.poll();
 
                 if (visited.add(u.node())) {
-                    for (var v : neighbors.get(u.node())) {
+                    for (var v : neighbors.getOrDefault(u.node(),Set.of())) {
                         if (!visited.contains(v.node())) {
                             var newDistance = distances.get(u.node()) + v.distance();
 
