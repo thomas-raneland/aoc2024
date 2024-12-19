@@ -1,42 +1,18 @@
-import java.util.HashMap;
-import java.util.List;
-
 public class Day19 {
     public static void main(String... args) {
-        String input = AocUtils.download(19);
-        partI(input);
-        partII(input);
+        java.util.List<String> lines = AocUtils.download(19).lines().toList();
+        java.util.List<String> patterns = lines.subList(2, lines.size());
+        java.util.List<String> towels = java.util.List.of(lines.getFirst().split(", "));
+        long count = patterns.stream().filter(pattern -> solutions(towels, pattern, 0, new java.util.HashMap<>()) > 0).count();
+        long sum = patterns.stream().mapToLong(pattern -> solutions(towels, pattern, 0, new java.util.HashMap<>())).sum();
+        System.out.println("Part I: " + count + "\nPart II: " + sum);
     }
 
-    private static void partI(String input) {
-        Parsed parsed = Parsed.of(input);
-        long count = parsed.patterns().stream().filter(p -> solutions(parsed.towels(), p, 0, new HashMap<>()) > 0).count();
-        System.out.println("Part I: " + count);
-    }
-
-    private static void partII(String input) {
-        Parsed parsed = Parsed.of(input);
-        long count = parsed.patterns().stream().mapToLong(p -> solutions(parsed.towels(), p, 0, new HashMap<>())).sum();
-        System.out.println("Part II: " + count);
-    }
-
-    private static long solutions(List<String> towels, String pattern, int pos, HashMap<Integer, Long> cache) {
-        if (pos == pattern.length()) {
-            return 1;
-        } else if (!cache.containsKey(pos)) {
-            cache.put(pos, towels.stream()
-                                 .filter(t -> pattern.substring(pos).startsWith(t))
-                                 .mapToLong(t -> solutions(towels, pattern, pos + t.length(), cache))
-                                 .sum());
+    private static long solutions(java.util.List<String> towels, String pattern, int pos, java.util.Map<Integer, Long> cache) {
+        if (pos < pattern.length() && !cache.containsKey(pos)) {
+            cache.put(pos, towels.stream().filter(towel -> pattern.startsWith(towel, pos))
+                                 .mapToLong(towel -> solutions(towels, pattern, pos + towel.length(), cache)).sum());
         }
-
-        return cache.get(pos);
-    }
-
-    record Parsed(List<String> towels, List<String> patterns) {
-        static Parsed of(String input) {
-            List<String> lines = input.lines().toList();
-            return new Parsed(List.of(lines.getFirst().split(", ")), lines.subList(2, lines.size()));
-        }
+        return pos == pattern.length() ? 1 : cache.get(pos);
     }
 }
