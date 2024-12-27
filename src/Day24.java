@@ -12,11 +12,86 @@ import java.util.TreeSet;
 import java.util.stream.Collectors;
 
 public class Day24 {
+    private static final String TEST_INPUT1 = """
+            x00: 1
+            x01: 0
+            x02: 1
+            x03: 1
+            x04: 0
+            y00: 1
+            y01: 1
+            y02: 1
+            y03: 1
+            y04: 1
+            
+            ntg XOR fgs -> mjb
+            y02 OR x01 -> tnw
+            kwq OR kpj -> z05
+            x00 OR x03 -> fst
+            tgd XOR rvg -> z01
+            vdt OR tnw -> bfw
+            bfw AND frj -> z10
+            ffh OR nrd -> bqk
+            y00 AND y03 -> djm
+            y03 OR y00 -> psh
+            bqk OR frj -> z08
+            tnw OR fst -> frj
+            gnj AND tgd -> z11
+            bfw XOR mjb -> z00
+            x03 OR x00 -> vdt
+            gnj AND wpb -> z02
+            x04 AND y00 -> kjc
+            djm OR pbm -> qhw
+            nrd AND vdt -> hwm
+            kjc AND fst -> rvg
+            y04 OR y02 -> fgs
+            y01 AND x02 -> pbm
+            ntg OR kjc -> kwq
+            psh XOR fgs -> tgd
+            qhw XOR tgd -> z09
+            pbm OR djm -> kpj
+            x03 XOR y03 -> ffh
+            x00 XOR y04 -> ntg
+            bfw OR bqk -> z06
+            nrd XOR fgs -> wpb
+            frj XOR qhw -> z04
+            bqk OR frj -> z07
+            y03 OR x01 -> nrd
+            hwm AND bqk -> z03
+            tgd XOR rvg -> z12
+            tnw OR pbm -> gnj
+            """;
+
+    private static final String TEST_INPUT2 = """
+            x00: 0
+            x01: 1
+            x02: 0
+            x03: 1
+            x04: 0
+            x05: 1
+            y00: 0
+            y01: 0
+            y02: 1
+            y03: 1
+            y04: 0
+            y05: 1
+            
+            x00 AND y00 -> z05
+            x01 AND y01 -> z02
+            x02 AND y02 -> z01
+            x03 AND y03 -> z03
+            x04 AND y04 -> z04
+            x05 AND y05 -> z00
+            """;
+
     public static void main(String... args) {
         AocUtils.waitForStartTime(24);
         String realInput = AocUtils.download(24);
+        partI(TEST_INPUT1);
+        partII(TEST_INPUT2, Formula.sixBitAnd());
+        System.out.println();
         partI(realInput);
-        partII(realInput);
+        partII(realInput, Formula.plus());
     }
 
     private static void partI(String input) {
@@ -27,10 +102,10 @@ public class Day24 {
         System.out.println("Part I: " + output);
     }
 
-    private static void partII(String input) {
+    private static void partII(String input, Map<String, Formula> expected) {
         String[] parts = input.split("\n\n");
         Device device = Device.parse(parts[1]);
-        Set<String> swappedOuts = findOutsToSwap(device, Formula.plus());
+        Set<String> swappedOuts = findOutsToSwap(device, expected);
         System.out.println("Part II: " + String.join(",", swappedOuts));
     }
 
@@ -49,11 +124,13 @@ public class Day24 {
     }
 
     private static Device swapOuts(Device device, String out, Formula expected, Set<String> swappedOuts) {
-        for (String oldOut : device.dependencies(out)) {
+        Set<String> dependencies = device.dependencies(out);
+
+        for (String oldOut : dependencies) {
             for (String newOut : device.gates().keySet()) {
                 Device newDevice = device.swap(oldOut, newOut);
 
-                if (!newDevice.isCircular() && newDevice.formula(out).equals(expected)) {
+                if (!newDevice.isCircular(out, new HashSet<>()) && newDevice.formula(out).equals(expected)) {
                     swappedOuts.add(oldOut);
                     swappedOuts.add(newOut);
                     return newDevice;
@@ -96,17 +173,13 @@ public class Day24 {
             return new Device(gates);
         }
 
-
         List<String> externalOuts() {
             return gates().values().stream().map(Gate::out).filter(out -> out.startsWith("z")).toList();
         }
 
         long output(Input input) {
-            String zString = externalOuts()
-                    .stream()
-                    .sorted(Comparator.reverseOrder())
-                    .map(out -> String.valueOf(compute(out, input)))
-                    .collect(Collectors.joining());
+            String zString = externalOuts().stream().sorted(Comparator.reverseOrder()).map(
+                    out -> String.valueOf(compute(out, input))).collect(Collectors.joining());
 
             return Long.parseLong(zString, 2);
         }
@@ -152,19 +225,16 @@ public class Day24 {
             return new Device(swapped);
         }
 
-        boolean isCircular() {
-            return gates.values().stream().anyMatch(g -> isCircular(g, new HashSet<>()));
-        }
+        private boolean isCircular(String out, Set<String> visited) {
+            Gate gate = gates.get(out);
 
-        private boolean isCircular(Gate gate, Set<String> visited) {
             if (gate == null) {
                 return false;
-            } else if (!visited.add(gate.out())) {
+            } else if (!visited.add(out)) {
                 return true;
             }
 
-            return isCircular(gates.get(gate.a()), new HashSet<>(visited)) ||
-                   isCircular(gates.get(gate.b()), new HashSet<>(visited));
+            return isCircular(gate.a(), new HashSet<>(visited)) || isCircular(gate.b(), new HashSet<>(visited));
         }
 
         Formula formula(String out) {
@@ -200,6 +270,17 @@ public class Day24 {
         static Formula operation(Operator operator, Formula a, Formula b) {
             record Operation(Operator operator, Set<Formula> operands) implements Formula {}
             return new Operation(operator, Set.of(a, b));
+        }
+
+        static Map<String, Formula> sixBitAnd() {
+            Map<String, Formula> sixBitAnd = new LinkedHashMap<>();
+            sixBitAnd.put("z00", and(variable("x00"), variable("y00")));
+            sixBitAnd.put("z01", and(variable("x01"), variable("y01")));
+            sixBitAnd.put("z02", and(variable("x02"), variable("y02")));
+            sixBitAnd.put("z03", and(variable("x03"), variable("y03")));
+            sixBitAnd.put("z04", and(variable("x04"), variable("y04")));
+            sixBitAnd.put("z05", and(variable("x05"), variable("y05")));
+            return sixBitAnd;
         }
 
         static Map<String, Formula> plus() {
